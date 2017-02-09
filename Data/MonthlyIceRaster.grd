@@ -1,0 +1,25 @@
+[general]
+creator=R package 'raster'
+created=2016-12-30 12:18:36
+[georeference]
+nrows=359
+ncols=243
+xmin=-95.2731568129644
+ymin=-85.9282053679227
+xmax=-13.3821568129644
+ymax=-50.3154053679227
+projection=+proj=longlat +ellps=WGS84
+[data]
+datatype=FLT8S
+byteorder=little
+nbands=42
+bandorder=BIL
+minvalue=1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1
+maxvalue=1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1:1
+nodatavalue=-1.7e+308
+[legend]
+legendtype=
+values=
+color=
+[description]
+layername=Jan_2012.1:Jan_2012.2:Feb_2012.1:Feb_2012.2:Mar_2012.1:Mar_2012.2:Apr_2012.1:Apr_2012.2:May_2012.1:May_2012.2:Jun_2012.1:Jun_2012.2:Jul_2012.1:Jul_2012.2:Jan_2013.1:Jan_2013.2:Feb_2013.1:Feb_2013.2:Mar_2013.1:Mar_2013.2:Apr_2013.1:Apr_2013.2:May_2013.1:May_2013.2:Jun_2013.1:Jun_2013.2:Jul_2013.1:Jul_2013.2:Jan_2015.1:Jan_2015.2:Feb_2015.1:Feb_2015.2:Mar_2015.1:Mar_2015.2:Apr_2015.1:Apr_2015.2:May_2015.1:May_2015.2:Jun_2015.1:Jun_2015.2:Jul_2015.1:Jul_2015.2

@@ -1,0 +1,5 @@
+DeployID,Ptt,Instr,RecordType,MsgCount,Duplicates,Corrupt,AvgInterval,MinInterval,Date,Satellite,LocationQuality,Latitude,Longitude,Latitude2,Longitude2,IQ,Duration,Frequency,Power
+"122020",122020,Mk10,DS,8,0,8,38,30,02:26:23 11-Sep-2012,N,1,-39.6650,176.8740,,,50,,401644042,-130,
+"122020",122020,Mk10,DS,9,0,3,41,30,02:19:21 21-Sep-2012,N,2,-39.6620,176.8770,,,58,,401642790,-133,
+"122020",122020,Mk10,DS,18,0,8,33,30,02:56:51 21-Sep-2012,P,,,,,,,,,-125,
+"122020",122020,Mk10,DS,1,0,1,,,11:37:50 09-Feb-2013,M,,,,,,,,,,

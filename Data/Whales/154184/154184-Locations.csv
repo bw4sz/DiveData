@@ -1,0 +1,6 @@
+DeployID,Ptt,Instr,Date,Type,Quality,Latitude,Longitude,Error radius,Error Semi-major axis,Error Semi-minor axis,Error Ellipse orientation,Offset,Offset orientation,GPE MSD,GPE U,Comment
+"154184",154184,Mk10,00:08:25 01-Mar-2016,Argos,B,-63.4660,-56.9230,,,,,,,,,
+"154184",154184,Mk10,10:07:54 01-Mar-2016,Argos,B,-63.4200,-56.9690,,,,,,,,,
+"154184",154184,Mk10,10:07:54 01-Mar-2016,Argos,B,-63.3720,-56.9350,,,,,,,,,
+"154184",154184,Mk10,10:07:54 01-Mar-2016,Argos,B,-63.3720,-56.9350,,,,,,,,,
+"154184",154184,Mk10,12:57:13 05-Mar-2016,Argos,Z,-64.9270,-62.2210,,,,,,,,,

@@ -1,0 +1,170 @@
+---
+title: "Exploration"
+author: "Ben Weinstein"
+date: "January 20, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(chron)
+library(dplyr)
+
+#get files
+f<-list.files("Data/Whales/",pattern="Behavior",full.names=T,recursive = T)
+dat<-bind_rows(lapply(f,read.csv))
+dat$timestamp<-as.POSIXct(dat$End,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
+
+dat$Month<-months(dat$timestamp)
+dat$Month<-factor(dat$Month,levels=month.name)
+dat$Hour<-strftime(dat$timestamp,format="%H")
+dat$Year<-years(dat$timestamp)
+
+#remove minkes
+minke<-c("131117","131118","131120","154184")
+dat<-dat[!dat$Ptt %in% minke,]
+
+#create unique messages
+
+indices<-which(dat$What=="Message")
+counter=1
+dat$ID<-NA
+for (x in 1:(length(indices)-1)){
+  dat[indices[x]:indices[x+1],"ID"]<-counter
+  counter=counter+1
+}
+
+dive<-dat %>% filter(What=="Dive") %>% select(Animal=Ptt,timestamp,Hour,Month,Year, ID,Start,DepthMax,DepthMin,DurationMax)
+dive<-dive[!is.na(dive$Month),]
+```
+
+```{r}
+
+messages<-dat %>% filter(dat$What=="Message")
+messages$timestamp<-as.POSIXct(messages$End,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
+
+
+library(data.table)
+#look up the time interval that best fits
+setDT(gdat)            ## convert to data.table by reference
+setDT(messages)            ## same
+
+#dat[, timestamp := timestamp1]  ## create a duplicate of 'date1'
+setkey(messages, timestamp)    ## set the column to perform the join on
+setkey(gdat, Date)    ## same as above
+
+ans = gdat[messages, roll=Inf] ## perform rolling join
+ans<-as.data.frame(ans)
+
+message_join<-ans %>% select(Date,Animal=Ptt,Date,Quality,Latitude,Longitude,ID)
+
+mdat<-merge(dat,message_join,by="ID")
+mdat<-mdat %>% filter(What=="Dive")
+
+mdat<-mdat %>% select(ID,Animal,Latitude,Longitude,timestamp,Start,End,Date,Month,Hour,Year,DepthMax,DepthMin,Quality,DurationMax,DurationMin)
+```
+
+#Seasonal patterns of mdat depth
+```{r}
+#mdat depth and time
+ggplot(mdat,aes(x=timestamp,y=DepthMax)) + geom_point()  + scale_x_datetime(date_breaks = "2 week",date_labels = "%m/%d/%y") + scale_y_reverse() + theme_bw() + labs(x="Date")
+ggsave("Figures/Depth_Time.jpg",height=5,width=5)
+```
+
+## mdat Bin Depth
+```{r}
+mdat20<-mdat %>% filter(DepthMax>20)
+
+mdat20$Interval<-cut(mdat20$DepthMax,seq(0,500,50))
+
+permonth<-mdat20 %>% group_by(Month) %>% summarize(n=n()) 
+month_inter<-table(mdat20$Month,mdat20$Interval)
+
+month_inter<-merge(month_inter,permonth,by.x="Var1",by.y="Month")
+month_inter$prop<-month_inter$Freq/month_inter$n
+
+month_inter$Var2<-factor(month_inter$Var2,levels=rev(levels(month_inter$Var2)))
+ggplot(month_inter) + geom_tile(aes(x=Var1,y=Var2,fill=prop*100)) + labs(x="Month",y="mdat Bin",fill="%") + scale_fill_continuous(low="blue",high="red")
+
+```
+### By Individual
+```{r}
+mdat20<-mdat %>% filter(DepthMax>20,!Animal %in% c(131111,131128,131115,131116))
+
+mdat20$Interval<-cut(mdat20$DepthMax,seq(0,500,50))
+
+permonth<-mdat20 %>% group_by(Month,Animal) %>% summarize(n=n()) 
+month_inter<-melt(table(mdat20$Month,mdat20$Animal,mdat20$Interval))
+
+colnames(month_inter)<-c("Month","Animal","Interval","mdats")
+
+month_inter<-merge(month_inter,permonth,by=c("Animal","Month"))
+month_inter$prop<-month_inter$mdats/month_inter$n
+
+month_inter$Interval<-factor(month_inter$Interval,levels=rev(levels(month_inter$Interval)))
+ggplot(month_inter) + geom_tile(aes(x=Month,y=Interval,fill=prop*100)) + labs(x="Month",y="mdat Bin",fill="%") + scale_fill_continuous(low="blue",high="red") + facet_wrap(~Animal,scales="free")
+
+```
+
+## By individual
+
+```{r}
+ggplot(mdat,aes(x=timestamp,y=DepthMax)) + geom_point() + geom_smooth() + scale_x_datetime(date_breaks = "2 week") + scale_y_reverse() + facet_wrap(~Animal,scales="free")
+ggsave("Figures/Depth_Time.jpg",height=5,width=5)
+```
+
+## By Month
+```{r}
+ggplot(mdat,aes(x=timestamp,y=DepthMax,col=Month)) + geom_point()  + scale_y_reverse() + facet_wrap(~Animal,scales="free_x") + labs(col="Animal",x="Time") + scale_x_datetime(date_breaks = "2 week",date_labels = "%m/%d/%y")
+
+#mdat data and dutation, colored by month
+ggplot(data=mdat,aes(x=DurationMax, y=DepthMax,col=Month)) + geom_point() + theme_bw()
+```
+
+#average depth over month
+```{r}
+mdat %>% group_by(Month) %>% summarize(mean(DepthMax))
+```
+
+#Daily patterns of mdat depth 
+```{r}
+#timestamp
+ggplot(data=mdat,aes(x=as.numeric(Hour),y=DepthMax,col=as.factor(Animal))) + geom_point() + geom_smooth() + scale_y_reverse() + facet_wrap(~Month) + scale_x_continuous(breaks=seq(0,24,4))
+```
+
+## per individual
+```{r}
+ggplot(data=mdat,aes(x=as.numeric(Hour),y=DepthMax)) + geom_point() + geom_smooth() + scale_y_reverse() + facet_wrap(Animal~Month) + scale_x_continuous(breaks=seq(0,24,4))
+```
+
+# Geographic Data
+```{r}
+ggplot(mdat)
+#get files
+f<-list.files("Data/Whales/",pattern="Locations",full.names=T,recursive = T)
+gdat<-lapply(f,function(x) read.csv(x,stringsAsFactors=F))
+gdat<-lapply(gdat,function(x){
+  x$Quality<-as.character(x$Quality)
+  return(x)
+}) 
+gdat<-bind_rows(gdat)
+#timestamp
+gdat$Date<-as.POSIXct(gdat$Date,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
+```
+
+Bind geographic data to mdat data.
+
+
+```{r}
+
+maxD<-mdat %>% group_by(Animal,Latitude,Longitude,ID,Date) %>% summarize(m=max(DepthMax))
+
+amat<-maxD %>% arrange(Animal,Date)
+ggplot(amat[amat$Animal=="131127",],aes(x=Longitude,y=Latitude)) + geom_point(aes(col=m,size=m)) + borders(fill="black") + coord_cartesian(ylim = c(-65,-61),xlim=c(-55,-67)) + theme_bw() + scale_color_continuous(low="blue",high="red") + facet_wrap(~Animal) + geom_path(aes(group=1))
+```
+
+# Ice Data
+```{r}
+ice<-read.csv("InputData/SeaIce_AllYears_polygons.csv")
+```
+

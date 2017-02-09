@@ -1,0 +1,2 @@
+DeployID,Ptt,Instr,SW,PercentDecoded,Passes,PercentArgosLoc,MsgPerPass,DS,DI,MinPower,AvgPower,MaxPower,MinInterval,EarliestXmitTime,LatestXmitTime,XmitDays,EarliestDataTime,LatestDataTime,DataDays,ReleaseDate,ReleaseType,DeployDate
+"122018",122018,Mk10,,10,42,92,8,352,,,,,29,04:44:50 11-Sep-2012,18:24:47 09-Feb-2013,152,04:44:50 11-Sep-2012,13:47:28 12-Sep-2012,1,,,,

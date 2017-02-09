@@ -1,0 +1,16 @@
+; Unless otherwise specified, depths here generally assume a 1000 meter instrument and you may need to double the depths for 2000 meter instruments!
+
+DeployID,Ptt,DepthSensor,Instr,SW,RTC,Received,Time Offset,LocationQuality,Latitude,Longitude,Type,HauledOut,BrokenThermistor,BrokenLink,Transmits,BattVoltage,TransmitVoltage,TransmitCurrent,Temperature,Depth,MaxDepth,ZeroDepthOffset,LightLevel,NoDawnDusk,ReleaseType,ReleaseTime,InitiallyBroken,BurnMinutes,ReleaseDepth,FastGPSPower,TWICPower,PowerLimit,WetDry,MinWetDry,MaxWetDry,WetDryThreshold,StatusWord,TransmitPower,Resets,PreReleaseTilt,PreReleaseTiltSd,PreReleaseTiltCount,XmitQueue,FastGPSLocNumber,FastGPSFailures,BattDiscon
+"131117",131117,,Mk10,,01:56:00 01-Mar-2016,20:56:10 29-Feb-2016,-17989,1,-63.6260,-56.3560,CRC,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,15:15:22 01-Mar-2016,10:15:32 01-Mar-2016,-17989,B,-63.5520,-56.6830,CRC,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,03:14:43 02-Mar-2016,22:14:54 01-Mar-2016,-17988,B,-63.6410,-55.8110,CRC,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,05:01:54 02-Mar-2016,00:02:04 02-Mar-2016,-17989,A,-63.6250,-56.2060,CRC,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,,05:02:42 02-Mar-2016,,0,-63.5740,-56.3270,,0,0,,1767,2.992,,,-1.30,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,12:28:57 02-Mar-2016,07:29:08 02-Mar-2016,-17988,B,-63.4560,-56.4620,CRC,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,05:22:49 03-Mar-2016,00:22:59 03-Mar-2016,-17989,0,-63.5350,-56.5990,CRC,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,16:27:09 05-Mar-2016,11:27:19 05-Mar-2016,-17989,A,-63.8030,-55.1640,CRC,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,,12:58:27 05-Mar-2016,,1,-63.8650,-55.2640,,0,0,,3559,2.992,,,-1.30,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,11:20:34 09-Mar-2016,06:20:44 09-Mar-2016,-17989,1,-64.0570,-53.4830,CRC,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,15:27:39 10-Mar-2016,10:27:49 10-Mar-2016,-17989,B,-64.0620,-53.3130,CRC,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,17:01:13 10-Mar-2016,12:01:22 10-Mar-2016,-17990,B,-64.0530,-53.3490,CRC,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+"131117",131117,,Mk10,,23:34:33 10-Mar-2016,18:34:42 10-Mar-2016,-17990,B,-64.0780,-53.5280,CRC,0,0,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,

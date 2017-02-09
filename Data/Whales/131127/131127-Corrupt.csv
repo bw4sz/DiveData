@@ -1,0 +1,2 @@
+DeployID,Ptt,Instr,Date,Duplicates,Satellite,LocationQuality,Latitude,Longitude,Reason,Possible Timestamp,Possible Type,Byte 0,Byte 1,Byte 2,Byte 3,Byte 4,Byte 5,Byte 6,Byte 7,Byte 8,Byte 9,Byte 10,Byte 11,Byte 12,Byte 13,Byte 14,Byte 15,Byte 16,Byte 17,Byte 18,Byte 19,Byte 20,Byte 21,Byte 22,Byte 23,Byte 24,Byte 25,Byte 26,Byte 27,Byte 28,Byte 29,Byte 30,Byte 31
+"131127",131127,Mk10,11:25:15 25-Jan-2015,,,,,,CRC 34539.13304,08:00:00 20-Nov-2014,TimeSeries,216,110,186,232,131,113,175,58,94,2,76,86,16,21,73,43,181,232,193,100,194,208,6,106,26,15,253,219,188,166,208,

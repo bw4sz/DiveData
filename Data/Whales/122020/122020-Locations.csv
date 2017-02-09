@@ -1,0 +1,4 @@
+DeployID,Ptt,Instr,Date,Type,Quality,Latitude,Longitude,Error radius,Error Semi-major axis,Error Semi-minor axis,Error Ellipse orientation,Offset,Offset orientation,GPE MSD,GPE U,Comment
+"122020",122020,Mk10,02:26:23 11-Sep-2012,Argos,1,-39.6650,176.8740,,,,,,,,,
+"122020",122020,Mk10,02:19:21 21-Sep-2012,Argos,2,-39.6620,176.8770,,,,,,,,,
+"122020",122020,Mk10,02:19:21 21-Sep-2012,Argos,2,-39.6620,176.8770,,,,,,,,,

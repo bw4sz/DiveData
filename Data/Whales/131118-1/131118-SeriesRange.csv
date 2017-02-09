@@ -1,0 +1,4 @@
+DeployID,Ptt,DepthSensor,Source,Instr,Count,Start,End,LocationQuality,Latitude,Longitude,MinDepth,MinDepthAccuracy,MaxDepth,MaxDepthAccuracy,MinTemp,MinTempAccuracy,MaxTemp,MaxTempAccuracy
+"131118",131118,0.500000,Transmission,Mk10,1,06:00:00 09-Mar-2016,07:00:00 09-Mar-2016,,,,0.0,0.00,48.0,0.25,,,,
+"131118",131118,0.500000,Transmission,Mk10,1,11:00:00 14-Mar-2016,12:00:00 14-Mar-2016,,,,0.0,0.00,192.0,1.75,,,,
+"131118",131118,0.500000,Transmission,Mk10,1,18:00:00 14-Mar-2016,19:00:00 14-Mar-2016,,,,0.0,0.00,320.0,3.75,,,,

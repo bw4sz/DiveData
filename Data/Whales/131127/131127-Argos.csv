@@ -1,0 +1,2 @@
+DeployID,Ptt,Instr,RecordType,MsgCount,Duplicates,Corrupt,AvgInterval,MinInterval,Date,Satellite,LocationQuality,Latitude,Longitude,Latitude2,Longitude2,IQ,Duration,Frequency,Power
+"131127",131127,Mk10,DS,1,0,1,,,11:25:15 25-Jan-2015,A,,,,,,,,,,
