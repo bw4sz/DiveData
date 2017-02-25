@@ -1,0 +1,285 @@
+---
+title: "IceAnalysis"
+author: "Ben Weinstein"
+date: "February 21, 2017"
+output: html_document
+---
+
+#Spatial Data
+
+All tags
+
+```{r,warning=FALSE,message=FALSE,echo=FALSE}
+library(knitr)
+opts_chunk$set(echo=F,warning=F,message=F,fig.width = 11,fig.height = 5,cache=F)
+library(boot)
+library(raster)
+library(tidyr)
+library(ggplot2)
+library(MASS)
+library(ggmap)
+library(dplyr)
+library(chron)
+library(gridExtra)
+library(stringr)
+library(R2jags)
+library(maptools)
+library(reshape2)
+#New model to be run, flag turned off if just updating.
+newModel<-T
+
+##ggplot theme
+mytheme<-theme(axis.text.x=element_blank(),axis.ticks.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.x=element_blank(),axis.title.y=element_blank(),panel.grid=element_blank())
+```
+
+```{r}
+#read data
+mdat<-read.csv("InputData/Humpback Whales Megaptera novaeangliae West Antarctic Peninsula-3343066988628153526.csv")
+#standardize column names to match the simulation
+#Create an animal tag.
+mxy <- as(mdat, "data.frame")
+mxy$Animal<-mxy$individual.local.identifier
+mxy$x<-mxy$location.long
+mxy$y<-mxy$location.lat
+
+mxy$argos.lc<-mxy$argos.iq
+mxy$argos.iq<-NULL
+#grab set of animals
+#mxy<-mxy[mxy$Animal %in% c("131143","131142","123232","123236"),]
+
+#get rid of z class 
+mxy<-mxy[!mxy$argos.lc %in% c("Z"),]
+
+#crop by extent
+d<-SpatialPointsDataFrame(cbind(mxy$x,mxy$y),data=mxy,proj4string=CRS("+proj=longlat +datum=WGS84"))
+
+cropoly<-readShapePoly("InputData/CutPolygon.shp",proj4string=CRS("+proj=longlat +datum=WGS84"))
+
+b<-d[!is.na(d %over% cropoly)[,2],]
+
+mxy<-b@data
+
+#set datestamp
+mxy$timestamp<-as.POSIXct(mxy$timestamp,format="%Y-%m-%d %H:%M:%S.000")
+
+#month and year columns
+mxy$Month<-months(mxy$timestamp)
+mxy$Year<-years(mxy$timestamp)
+
+#remove migration events, create user cut polygon
+migration<-data.frame(Animal=c("121207","121210","123224","131130","123236","123232","112699","131127","121208","131136","131132","131133"),timestamp=c("2013-05-07 12:16:26","2013-04-30 02:01:51","2013-05-23 01:23:55","2016-04-27 00:53:21","2013-03-16 05:35:06","2013-04-25 05:09:21","2012-06-15 03:28:15","2016-07-15 00:02:46","2013-02-12 00:51:28","2016-06-30 00:18:11","2016-05-09 03:57:47","2016-07-05 13:26:44"))
+migration$timestamp<-as.POSIXct(migration$timestamp,format="%Y-%m-%d %H:%M:%S")
+
+mxy %>% group_by(Animal) %>% summarize(max(timestamp,na.rm=T)) %>% filter(Animal %in% migration$Animal)
+
+for(x in 1:nrow(migration)){
+    toremove<-which(mxy$Animal %in% migration$Animal[x] & mxy$timestamp > migration$timestamp[x])
+    mxy<-mxy[!(1:nrow(mxy) %in% toremove),]
+}           
+
+#Only austral sping and summer, not enough data for june and july
+#mxy<-mxy[mxy$Month %in% month.name[1:6],]
+
+#remove empty timestamps
+mxy<-mxy[!is.na(mxy$timestamp),]
+
+#remove duplicates
+mxy<-mxy[!duplicated(data.frame(mxy$timestamp,mxy$Animal)),]
+
+```
+
+# Dive Data
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(chron)
+library(dplyr)
+library(data.table)
+
+#get files
+f<-list.files("Data/Whales/",pattern="Behavior",full.names=T,recursive = T)
+dat<-bind_rows(lapply(f,read.csv))
+dat$timestamp<-as.POSIXct(dat$End,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
+
+dat$Month<-months(dat$timestamp)
+dat$Month<-factor(dat$Month,levels=month.name)
+dat$Hour<-strftime(dat$timestamp,format="%H")
+dat$Year<-years(dat$timestamp)
+
+#remove minkes
+minke<-c("131117","131118","131120","154184")
+dat<-dat[!dat$Ptt %in% minke,]
+
+#create unique messages
+indices<-which(dat$What=="Message")
+counter=1
+dat$ID<-NA
+for (x in 1:(length(indices)-1)){
+  dat[indices[x]:indices[x+1],"ID"]<-counter
+  counter=counter+1
+}
+
+dive<-dat %>% filter(What=="Dive") %>% select(Animal=Ptt,timestamp,Hour,Month,Year, ID,Start,DepthMax,DepthMin,DurationMax)
+dive<-dive[!is.na(dive$Month),]
+```
+
+# Geographic Data
+```{r}
+ggplot(mdat)
+#get files
+f<-list.files("Data/Whales/",pattern="Locations",full.names=T,recursive = T)
+gdat<-lapply(f,function(x) read.csv(x,stringsAsFactors=F))
+gdat<-lapply(gdat,function(x){
+  x$Quality<-as.character(x$Quality)
+  return(x)
+}) 
+gdat<-bind_rows(gdat)
+#timestamp
+gdat$Date<-as.POSIXct(gdat$Date,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
+```
+
+## Bind the geographic and dive data
+
+```{r}
+messages<-dat %>% filter(dat$What=="Message")
+messages$timestamp<-as.POSIXct(messages$End,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
+
+#look up the time interval that best fits
+setDT(gdat)            ## convert to data.table by reference
+setDT(messages)            ## same
+
+#dat[, timestamp := timestamp1]  ## create a duplicate of 'date1'
+setkey(messages, timestamp)    ## set the column to perform the join on
+setkey(gdat, Date)    ## same as above
+
+ans = gdat[messages, roll=Inf] ## perform rolling join
+ans<-as.data.frame(ans)
+
+message_join<-ans %>% select(Date,Animal=Ptt,Date,Quality,Latitude,Longitude,ID)
+
+mdat<-merge(dat,message_join,by="ID")
+mdat<-mdat %>% filter(What=="Dive")
+
+mdat<-mdat %>% select(ID,Animal,Latitude,Longitude,timestamp,Start,End,Date,Month,Hour,Year,DepthMax,DepthMin,Quality,DurationMax,DurationMin)
+```
+
+## Occupancy and ice concentration.
+
+What is the probability of occupancy of a cell as a function of % ice cover.
+
+Associate each argos location with ice cell.
+
+#get points in projection
+```{r}
+
+longlat<-SpatialPoints(cbind(mxy$location.long,mxy$location.lat),proj4string=CRS("+proj=longlat +datum=WGS84"))
+#long lat
+polarstereo<-spTransform(x=longlat,CRSobj=crs(r))
+mxy[,c("stereo.x","stereo.y")]<-coordinates(polarstereo)
+```
+
+```{r}
+#unique days to pull raster
+udays<-unique(strptime(mxy$timestamp,format="%Y-%m-%d"))
+mxy$iceday<-strptime(mxy$timestamp,format="%Y-%m-%d")
+
+#for each iceday, get the sea ice concentration
+out<-list()
+for (x in 1:length(udays)){
+    #split into components
+  mn<-format(udays[x],format="%m")
+  
+  #month abbreciation
+  mnabb<-tolower(month.abb[as.numeric(mn)])
+  
+  day<-format(udays[x],format="%d")
+  year<-format(udays[x],format="%Y")
+  
+  fl_final<-paste('asi-AMSR2-s3125-',year,mn,day,'.grd',sep="")
+  loadfile<-paste("C:/Users/Ben/Dropbox/Whales/AMSR2",year,mnabb,region,fl_final,sep="/")
+  
+  #load raster
+  tryCatch({
+  r<-raster(loadfile)
+  
+  #extract pts
+  upts<-mxy[mxy$iceday %in% udays[x],c("stereo.x","stereo.y")]
+  out[[x]]<-data.frame(upts,ice=raster::extract(x=r,y=SpatialPoints(cbind(upts))))
+  }, error=function(e){
+    print("No file")
+  })
+}
+
+ice_frame<-bind_rows(out)
+mxy<-merge(mxy,ice_frame,by=c("stereo.x","stereo.y"))
+```
+
+Basic ice visualizations
+
+```{r}
+ggplot(mxy,aes(x=ice,fill=Month)) + geom_density() +facet_wrap(~Month,scales = "free")
+```
+
+```{r}
+mxy$Month<-factor(mxy$Month,levels=month.name)
+ggplot()+geom_point(data=mxy, aes(x=x, y=y,col=ice),size=.5)  + facet_wrap(~Month,nrow = 2)  + borders(fill="grey90") + coord_cartesian(ylim = c(-70,-62),xlim=c(-55,-73)) + theme_bw() + mytheme + scale_color_continuous(low="gray",high="blue") 
+```
+
+Null use map
+
+* we are allowed to sample any cells that have been occupied in the dataset, we know that whales can disperse to those sites. This ignores the inhenerent spatial autocorrelation in movement.
+
+For each day, sample randomly in the background points for null values of sea ice concentration.
+```{r}
+stereopts<-SpatialPoints(cbind(mxy$stereo.x,mxy$stereo.y),proj4string =crs(r))
+available<-mask()
+
+background<-raster(r)
+bg<-rasterize(stereopts,background)
+bg<-bg>0
+
+#for each day
+
+#unique days to pull raster
+udays<-unique(strptime(mxy$timestamp,format="%Y-%m-%d"))
+mxy$iceday<-strptime(mxy$timestamp,format="%Y-%m-%d")
+
+#for each iceday, get the sea ice concentration
+out<-list()
+for (x in 1:length(udays)){
+    #split into components
+  mn<-format(udays[x],format="%m")
+  
+  #month abbreciation
+  mnabb<-tolower(month.abb[as.numeric(mn)])
+  
+  day<-format(udays[x],format="%d")
+  year<-format(udays[x],format="%Y")
+  
+  fl_final<-paste('asi-AMSR2-s3125-',year,mn,day,'.grd',sep="")
+  loadfile<-paste("C:/Users/Ben/Dropbox/Whales/AMSR2",year,mnabb,region,fl_final,sep="/")
+  
+  #load raster
+  tryCatch({
+  r<-raster(loadfile)
+  
+  #extract pts
+  upts<-mxy[mxy$iceday %in% udays[x],c("stereo.x","stereo.y")]
+  out[[x]]<-data.frame(upts,ice=raster::extract(x=r,y=SpatialPoints(cbind(upts))))
+  }, error=function(e){
+    print("No file")
+  })
+}
+
+nullframe<-bind_rows(out)
+
+```
+
+```{r}
+ggplot(mxy,aes(x=ice)) + geom_histogram()
+```
+
+```{r}
+save.image("Data/IceData.RData")
+```
+

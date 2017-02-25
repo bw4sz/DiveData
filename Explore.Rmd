@@ -9,6 +9,7 @@ output: html_document
 library(ggplot2)
 library(chron)
 library(dplyr)
+library(data.table)
 
 #get files
 f<-list.files("Data/Whales/",pattern="Behavior",full.names=T,recursive = T)
@@ -25,7 +26,6 @@ minke<-c("131117","131118","131120","154184")
 dat<-dat[!dat$Ptt %in% minke,]
 
 #create unique messages
-
 indices<-which(dat$What=="Message")
 counter=1
 dat$ID<-NA
@@ -38,13 +38,25 @@ dive<-dat %>% filter(What=="Dive") %>% select(Animal=Ptt,timestamp,Hour,Month,Ye
 dive<-dive[!is.na(dive$Month),]
 ```
 
+# Geographic Data
 ```{r}
+ggplot(mdat)
+#get files
+f<-list.files("Data/Whales/",pattern="Locations",full.names=T,recursive = T)
+gdat<-lapply(f,function(x) read.csv(x,stringsAsFactors=F))
+gdat<-lapply(gdat,function(x){
+  x$Quality<-as.character(x$Quality)
+  return(x)
+}) 
+gdat<-bind_rows(gdat)
+#timestamp
+gdat$Date<-as.POSIXct(gdat$Date,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
+```
 
+```{r}
 messages<-dat %>% filter(dat$What=="Message")
 messages$timestamp<-as.POSIXct(messages$End,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
 
-
-library(data.table)
 #look up the time interval that best fits
 setDT(gdat)            ## convert to data.table by reference
 setDT(messages)            ## same
@@ -87,6 +99,7 @@ month_inter$Var2<-factor(month_inter$Var2,levels=rev(levels(month_inter$Var2)))
 ggplot(month_inter) + geom_tile(aes(x=Var1,y=Var2,fill=prop*100)) + labs(x="Month",y="mdat Bin",fill="%") + scale_fill_continuous(low="blue",high="red")
 
 ```
+
 ### By Individual
 ```{r}
 mdat20<-mdat %>% filter(DepthMax>20,!Animal %in% c(131111,131128,131115,131116))
@@ -137,30 +150,13 @@ ggplot(data=mdat,aes(x=as.numeric(Hour),y=DepthMax,col=as.factor(Animal))) + geo
 ggplot(data=mdat,aes(x=as.numeric(Hour),y=DepthMax)) + geom_point() + geom_smooth() + scale_y_reverse() + facet_wrap(Animal~Month) + scale_x_continuous(breaks=seq(0,24,4))
 ```
 
-# Geographic Data
-```{r}
-ggplot(mdat)
-#get files
-f<-list.files("Data/Whales/",pattern="Locations",full.names=T,recursive = T)
-gdat<-lapply(f,function(x) read.csv(x,stringsAsFactors=F))
-gdat<-lapply(gdat,function(x){
-  x$Quality<-as.character(x$Quality)
-  return(x)
-}) 
-gdat<-bind_rows(gdat)
-#timestamp
-gdat$Date<-as.POSIXct(gdat$Date,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
-```
-
 Bind geographic data to mdat data.
 
-
 ```{r}
-
 maxD<-mdat %>% group_by(Animal,Latitude,Longitude,ID,Date) %>% summarize(m=max(DepthMax))
 
 amat<-maxD %>% arrange(Animal,Date)
-ggplot(amat[amat$Animal=="131127",],aes(x=Longitude,y=Latitude)) + geom_point(aes(col=m,size=m)) + borders(fill="black") + coord_cartesian(ylim = c(-65,-61),xlim=c(-55,-67)) + theme_bw() + scale_color_continuous(low="blue",high="red") + facet_wrap(~Animal) + geom_path(aes(group=1))
+ggplot(amat,aes(x=Longitude,y=Latitude)) + geom_point(aes(col=m,size=m)) + borders(fill="black") + coord_cartesian(ylim = c(-65,-61),xlim=c(-55,-67)) + theme_bw() + scale_color_continuous(low="blue",high="red") + facet_wrap(~Animal) + geom_path(aes(group=1))
 ```
 
 # Ice Data
