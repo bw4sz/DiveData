@@ -1,17 +1,19 @@
 ---
-title: "IceAnalysis"
+title: "Humpback distribution and sea ice"
 author: "Ben Weinstein"
 date: "February 21, 2017"
-output: html_document
+output: 
+  html_document:
+    keep_md: yes
+    number_sections: yes
+    theme: spacelab
+    toc: yes
 ---
 
-#Spatial Data
-
-All tags
 
 ```{r,warning=FALSE,message=FALSE,echo=FALSE}
 library(knitr)
-opts_chunk$set(echo=F,warning=F,message=F,fig.width = 11,fig.height = 5,cache=F)
+opts_chunk$set(echo=F,warning=F,message=F,fig.width = 11,fig.height = 7,cache=F)
 library(boot)
 library(raster)
 library(tidyr)
@@ -30,11 +32,14 @@ newModel<-T
 
 ##ggplot theme
 mytheme<-theme(axis.text.x=element_blank(),axis.ticks.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.x=element_blank(),axis.title.y=element_blank(),panel.grid=element_blank())
+
+load("Data/IceData.RData")
 ```
 
+#Argos Observations
 ```{r}
 #read data
-mdat<-read.csv("InputData/Humpback Whales Megaptera novaeangliae West Antarctic Peninsula-3343066988628153526.csv")
+mdat<-read.csv("Data/Humpback Whales Megaptera novaeangliae West Antarctic Peninsula-3343066988628153526.csv")
 #standardize column names to match the simulation
 #Create an animal tag.
 mxy <- as(mdat, "data.frame")
@@ -53,7 +58,7 @@ mxy<-mxy[!mxy$argos.lc %in% c("Z"),]
 #crop by extent
 d<-SpatialPointsDataFrame(cbind(mxy$x,mxy$y),data=mxy,proj4string=CRS("+proj=longlat +datum=WGS84"))
 
-cropoly<-readShapePoly("InputData/CutPolygon.shp",proj4string=CRS("+proj=longlat +datum=WGS84"))
+cropoly<-readShapePoly("Data/CutPolygon.shp",proj4string=CRS("+proj=longlat +datum=WGS84"))
 
 b<-d[!is.na(d %over% cropoly)[,2],]
 
@@ -70,7 +75,7 @@ mxy$Year<-years(mxy$timestamp)
 migration<-data.frame(Animal=c("121207","121210","123224","131130","123236","123232","112699","131127","121208","131136","131132","131133"),timestamp=c("2013-05-07 12:16:26","2013-04-30 02:01:51","2013-05-23 01:23:55","2016-04-27 00:53:21","2013-03-16 05:35:06","2013-04-25 05:09:21","2012-06-15 03:28:15","2016-07-15 00:02:46","2013-02-12 00:51:28","2016-06-30 00:18:11","2016-05-09 03:57:47","2016-07-05 13:26:44"))
 migration$timestamp<-as.POSIXct(migration$timestamp,format="%Y-%m-%d %H:%M:%S")
 
-mxy %>% group_by(Animal) %>% summarize(max(timestamp,na.rm=T)) %>% filter(Animal %in% migration$Animal)
+#mxy %>% group_by(Animal) %>% summarize(max(timestamp,na.rm=T)) %>% filter(Animal %in% migration$Animal)
 
 for(x in 1:nrow(migration)){
     toremove<-which(mxy$Animal %in% migration$Animal[x] & mxy$timestamp > migration$timestamp[x])
@@ -169,9 +174,9 @@ What is the probability of occupancy of a cell as a function of % ice cover.
 
 Associate each argos location with ice cell.
 
-#get points in projection
-```{r}
 
+```{r}
+#get points in projection
 longlat<-SpatialPoints(cbind(mxy$location.long,mxy$location.lat),proj4string=CRS("+proj=longlat +datum=WGS84"))
 #long lat
 polarstereo<-spTransform(x=longlat,CRSobj=crs(r))
@@ -206,7 +211,8 @@ for (x in 1:length(udays)){
   upts<-mxy[mxy$iceday %in% udays[x],c("stereo.x","stereo.y")]
   out[[x]]<-data.frame(upts,ice=raster::extract(x=r,y=SpatialPoints(cbind(upts))))
   }, error=function(e){
-    print("No file")
+    #print("No file")
+    return(NA)
   })
 }
 
@@ -214,10 +220,9 @@ ice_frame<-bind_rows(out)
 mxy<-merge(mxy,ice_frame,by=c("stereo.x","stereo.y"))
 ```
 
-Basic ice visualizations
 
 ```{r}
-ggplot(mxy,aes(x=ice,fill=Month)) + geom_density() +facet_wrap(~Month,scales = "free")
+ggplot(mxy,aes(x=ice,fill=Month)) + geom_density() +facet_wrap(~Month,scales = "free") + labs(x="Sea Ice Concentration")
 ```
 
 ```{r}
@@ -225,14 +230,16 @@ mxy$Month<-factor(mxy$Month,levels=month.name)
 ggplot()+geom_point(data=mxy, aes(x=x, y=y,col=ice),size=.5)  + facet_wrap(~Month,nrow = 2)  + borders(fill="grey90") + coord_cartesian(ylim = c(-70,-62),xlim=c(-55,-73)) + theme_bw() + mytheme + scale_color_continuous(low="gray",high="blue") 
 ```
 
+# Null models
+
+## Random use
+
 Null use map
 
-* we are allowed to sample any cells that have been occupied in the dataset, we know that whales can disperse to those sites. This ignores the inhenerent spatial autocorrelation in movement.
-
 For each day, sample randomly in the background points for null values of sea ice concentration.
+
 ```{r}
 stereopts<-SpatialPoints(cbind(mxy$stereo.x,mxy$stereo.y),proj4string =crs(r))
-available<-mask()
 
 background<-raster(r)
 bg<-rasterize(stereopts,background)
@@ -263,21 +270,45 @@ for (x in 1:length(udays)){
   tryCatch({
   r<-raster(loadfile)
   
-  #extract pts
-  upts<-mxy[mxy$iceday %in% udays[x],c("stereo.x","stereo.y")]
-  out[[x]]<-data.frame(upts,ice=raster::extract(x=r,y=SpatialPoints(cbind(upts))))
+  #mask by bg points
+  #r<-mask(r,bg)
+  
+  #how many points?
+  bgpts<-sum(mxy$iceday %in% udays[x])
+  out[[x]]<-sampleRandom(r,xy=T,size=bgpts)
+
   }, error=function(e){
-    print("No file")
+    #print("No file")
+    return(NA)
   })
 }
 
-nullframe<-bind_rows(out)
-
+nullframe<-bind_rows(lapply(out,function(x) as.data.frame(x)))
+colnames(nullframe)<-c("x","y","ice")
 ```
 
 ```{r}
-ggplot(mxy,aes(x=ice)) + geom_histogram()
+allice<-bind_rows(list(data.frame(ice=mxy$ice,PA=1,type="Observed"),data.frame(ice=nullframe$ice,PA=0,type="Random")))
+
+#as density plot
+allice$type<-factor(allice$type,levels=c("Random","Observed"))
+ggplot(data=allice) + geom_density(aes(x=ice,fill=type),alpha=0.9) + theme_bw() + scale_alpha(range=c(0.5,1)) + scale_fill_manual(values=c("grey90","grey20")) + labs(fill="Data",x="Sea Ice Concentration (%)")
+
+#as cumlative distribution
+#ggplot(allice,aes(x=ice,col=type)) + stat_ecdf()
+
+#create PA frame
+allice$PA<-(allice$type=="Observed")*1
+  
+ggplot(allice,aes(x=ice,y=PA)) + geom_smooth(method="glm",method.args=list(family="binomial")) + geom_point() + labs(x="Sea ice concentration",y="Presence")                    
 ```
+
+## Temperal window
+
+Sample the cells in a sliding window
+
+
+* we are allowed to sample any cells that have been occupied in the dataset, we know that whales can disperse to those sites. This ignores the inhenerent spatial autocorrelation in movement.
 
 ```{r}
 save.image("Data/IceData.RData")
