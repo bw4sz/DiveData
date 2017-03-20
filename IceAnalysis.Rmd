@@ -10,9 +10,33 @@ output:
     toc: yes
 ---
 
+# Project Description 
+  
+  * Global changes in climate will lead to new environments
+  
+  * A key question is how sensitive animals are to changes in environmental conditions
+  
+  * When favorable conditions arise, how quickly can animals respond to the availability of new habitat?
+  
+  * Polar marine ecosystems are particularly vulnerable, given the pronounced effects of climate on local conditions, variable environments, and lack of information on species distributions
+  
+  * We evaluate the response of two cetacean species to changes in sea-ice cover.
+  
+##	Our aims
+
+  * Sea ice trends, by month, over the last 5 years
+
+  * Determine the threshold of sea-ice concentration and proximity on whale presence
+  
+  * Evaluate the phenology of sea-ice timing and whale movement
+  
+  * Highlight anomalous sea ice conditions  
+  * % Change in available habitat based on variable ice conditions
 
 ```{r,warning=FALSE,message=FALSE,echo=FALSE}
 library(knitr)
+library(foreach)
+library(doSNOW)
 opts_chunk$set(echo=F,warning=F,message=F,fig.width = 11,fig.height = 7,cache=F)
 library(boot)
 library(raster)
@@ -36,7 +60,6 @@ mytheme<-theme(axis.text.x=element_blank(),axis.ticks.x=element_blank(),axis.tex
 load("Data/IceData.RData")
 ```
 
-#Argos Observations
 ```{r}
 #read data
 mdat<-read.csv("Data/Humpback Whales Megaptera novaeangliae West Antarctic Peninsula-3343066988628153526.csv")
@@ -49,11 +72,12 @@ mxy$y<-mxy$location.lat
 
 mxy$argos.lc<-mxy$argos.iq
 mxy$argos.iq<-NULL
+
 #grab set of animals
-#mxy<-mxy[mxy$Animal %in% c("131143","131142","123232","123236"),]
+mxy<-mxy[mxy$Animal %in% c("131143","131142","123232","123236"),]
 
 #get rid of z class 
-mxy<-mxy[!mxy$argos.lc %in% c("Z"),]
+mxy<-mxy[!mxy$argos.lc %in% c("B","Z"),]
 
 #crop by extent
 d<-SpatialPointsDataFrame(cbind(mxy$x,mxy$y),data=mxy,proj4string=CRS("+proj=longlat +datum=WGS84"))
@@ -90,90 +114,13 @@ mxy<-mxy[!is.na(mxy$timestamp),]
 
 #remove duplicates
 mxy<-mxy[!duplicated(data.frame(mxy$timestamp,mxy$Animal)),]
-
 ```
 
-# Dive Data
-
-```{r setup, include=FALSE}
-library(ggplot2)
-library(chron)
-library(dplyr)
-library(data.table)
-
-#get files
-f<-list.files("Data/Whales/",pattern="Behavior",full.names=T,recursive = T)
-dat<-bind_rows(lapply(f,read.csv))
-dat$timestamp<-as.POSIXct(dat$End,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
-
-dat$Month<-months(dat$timestamp)
-dat$Month<-factor(dat$Month,levels=month.name)
-dat$Hour<-strftime(dat$timestamp,format="%H")
-dat$Year<-years(dat$timestamp)
-
-#remove minkes
-minke<-c("131117","131118","131120","154184")
-dat<-dat[!dat$Ptt %in% minke,]
-
-#create unique messages
-indices<-which(dat$What=="Message")
-counter=1
-dat$ID<-NA
-for (x in 1:(length(indices)-1)){
-  dat[indices[x]:indices[x+1],"ID"]<-counter
-  counter=counter+1
-}
-
-dive<-dat %>% filter(What=="Dive") %>% select(Animal=Ptt,timestamp,Hour,Month,Year, ID,Start,DepthMax,DepthMin,DurationMax)
-dive<-dive[!is.na(dive$Month),]
-```
-
-# Geographic Data
-```{r}
-ggplot(mdat)
-#get files
-f<-list.files("Data/Whales/",pattern="Locations",full.names=T,recursive = T)
-gdat<-lapply(f,function(x) read.csv(x,stringsAsFactors=F))
-gdat<-lapply(gdat,function(x){
-  x$Quality<-as.character(x$Quality)
-  return(x)
-}) 
-gdat<-bind_rows(gdat)
-#timestamp
-gdat$Date<-as.POSIXct(gdat$Date,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
-```
-
-## Bind the geographic and dive data
-
-```{r}
-messages<-dat %>% filter(dat$What=="Message")
-messages$timestamp<-as.POSIXct(messages$End,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
-
-#look up the time interval that best fits
-setDT(gdat)            ## convert to data.table by reference
-setDT(messages)            ## same
-
-#dat[, timestamp := timestamp1]  ## create a duplicate of 'date1'
-setkey(messages, timestamp)    ## set the column to perform the join on
-setkey(gdat, Date)    ## same as above
-
-ans = gdat[messages, roll=Inf] ## perform rolling join
-ans<-as.data.frame(ans)
-
-message_join<-ans %>% select(Date,Animal=Ptt,Date,Quality,Latitude,Longitude,ID)
-
-mdat<-merge(dat,message_join,by="ID")
-mdat<-mdat %>% filter(What=="Dive")
-
-mdat<-mdat %>% select(ID,Animal,Latitude,Longitude,timestamp,Start,End,Date,Month,Hour,Year,DepthMax,DepthMin,Quality,DurationMax,DurationMin)
-```
-
-## Occupancy and ice concentration.
+# Occupancy and ice concentration.
 
 What is the probability of occupancy of a cell as a function of % ice cover.
 
 Associate each argos location with ice cell.
-
 
 ```{r}
 #get points in projection
@@ -220,14 +167,46 @@ ice_frame<-bind_rows(out)
 mxy<-merge(mxy,ice_frame,by=c("stereo.x","stereo.y"))
 ```
 
-
 ```{r}
-ggplot(mxy,aes(x=ice,fill=Month)) + geom_density() +facet_wrap(~Month,scales = "free") + labs(x="Sea Ice Concentration")
+mxy$Month<-factor(mxy$Month,levels=month.name)
+ggplot(mxy,aes(x=ice)) + geom_histogram(aes(fill=Month),position="dodge") + labs(x="Sea Ice Concentration") + theme_bw()
+
+ggplot(mxy[mxy$ice>15,],aes(x=ice)) + geom_histogram(aes(fill=Month),position="dodge") + labs(x="Sea Ice Concentration") + theme_bw()
+
+ggplot(mxy,aes(x=Month,y=ice)) + geom_boxplot() + labs(y="Sea Ice Concentration") + theme_bw()
 ```
 
 ```{r}
-mxy$Month<-factor(mxy$Month,levels=month.name)
-ggplot()+geom_point(data=mxy, aes(x=x, y=y,col=ice),size=.5)  + facet_wrap(~Month,nrow = 2)  + borders(fill="grey90") + coord_cartesian(ylim = c(-70,-62),xlim=c(-55,-73)) + theme_bw() + mytheme + scale_color_continuous(low="gray",high="blue") 
+ggplot()+geom_point(data=mxy, aes(x=x, y=y,col=ice),size=.5)  + facet_wrap(~Month,nrow = 2)  + borders(fill="black") + coord_cartesian(ylim = c(-70,-62),xlim=c(-55,-73)) + theme_bw() + mytheme + scale_color_continuous(low="blue",high="red") 
+
+ggplot()+geom_point(data=mxy[mxy$ice>15,], aes(x=x, y=y,col=ice),size=.5)  + facet_wrap(~Month,nrow = 2)  + borders() + coord_cartesian(ylim = c(-70,-62),xlim=c(-55,-73)) + theme_bw() + mytheme + scale_color_continuous(low="blue",high="red") 
+
+```
+
+##Time integration
+
+Each observation is not independent. In the above analysis a whale popping up 4 times in an hour will recieve the same weight as 4 observations in one day. One approach is to take the average ice concentration among observations and multiply it be the time difference.
+
+```{r}
+
+difft<-function(df){
+  df<-df %>% arrange(timestamp)
+for(row in 2:nrow(df)){
+    df[row,"LastTime"]<-difftime(df$timestamp[row],df$timestamp[row-1],units="hours")
+     df[row,"MeanIce"]<-median(c(df$ice[row],df$ice[row-1]),na.rm=T)
+  }
+  return(df)
+}
+#time since last observation
+mxy$iceday<-as.character(mxy$iceday)
+mxy_time<-mxy %>% group_by(Animal) %>% do(difft(.))
+
+#remove observations more than a two days, too far to travel
+mxy_time<-mxy_time %>% filter(LastTime<48)
+
+
+#weighted kernel
+ggplot(mxy_time,aes(x=MeanIce))  + geom_density(fill="red") + geom_density(aes(weight=LastTime/sum(LastTime)),fill="black",alpha=0.3)
 ```
 
 # Null models
@@ -303,10 +282,87 @@ allice$PA<-(allice$type=="Observed")*1
 ggplot(allice,aes(x=ice,y=PA)) + geom_smooth(method="glm",method.args=list(family="binomial")) + geom_point() + labs(x="Sea ice concentration",y="Presence")                    
 ```
 
-## Temperal window
+#Distance to ice edge
+
+```{r}
+#unique days to pull raster
+udays<-unique(strptime(mxy$timestamp,format="%Y-%m-%d"))
+mxy$iceday<-strptime(mxy$timestamp,format="%Y-%m-%d")
+
+#for each iceday, get the sea ice concentration
+out<-list()
+
+cl<-makeCluster(4,"SOCK")
+registerDoSNOW(cl)
+out<-foreach(x=1:length(udays),.packages="raster") %dopar% {
+  print(x)
+  #split into components
+  mn<-format(udays[x],format="%m")
+  
+  #month abbreciation
+  mnabb<-tolower(month.abb[as.numeric(mn)])
+  
+  day<-format(udays[x],format="%d")
+  year<-format(udays[x],format="%Y")
+  
+  fl_final<-paste('asi-AMSR2-s3125-',year,mn,day,'.grd',sep="")
+  loadfile<-paste("C:/Users/Ben/Dropbox/Whales/AMSR2",year,mnabb,region,fl_final,sep="/")
+  
+  #load raster
+  #tryCatch({
+  r<-raster(loadfile)
+  
+  #ice
+  ice<-r>15
+  
+  #mask that adds coastline
+  ice_edge_coast<-ice
+  ice_edge_coast[is.na(ice_edge_coast)]<-1
+  
+  #compute edge
+  ice_edge<-boundaries(ice_edge_coast,classes=T)
+  
+  #extract pts
+  upts<-mxy[mxy$iceday %in% udays[x],c("stereo.x","stereo.y")]
+  
+  #extract distance to each points
+  daypoints<-list()
+  for(j in 1:nrow(upts)){
+    distk<-distanceFromPoints(xy=upts[j,],ice_edge)  
+    
+    #mask open water
+    ice_edge[ice_edge==0]<-NA
+    
+    #Distance on the ice edge
+    distk<-mask(distk,ice_edge)
+    
+    #Closest cell in km
+    daypoints[[j]]<-min(distk[],na.rm=T)/1000
+  }
+  
+  return(data.frame(upts,dist_ice=unlist(daypoints)))
+  }
+  #, error=function(e){
+    #print("No file")
+  #  return(NA)
+  #})
+#}
+
+stopCluster(cl)
+#distance to nearest cell
+distice_frame<-bind_rows(out)
+mxy<-merge(mxy,distice_frame,by=c("stereo.x","stereo.y"))
+```
+
+```{r}
+ggplot(data=mxy,aes(x=dist_ice)) + geom_histogram()
+
+ggplot()+geom_point(data=mxy,aes(x=x, y=y,col=dist_ice),size=.5)  + facet_wrap(~Month,nrow = 2)  + borders() + coord_cartesian(ylim = c(-70,-62),xlim=c(-55,-73)) + theme_bw() + mytheme + scale_color_continuous(low="blue",high="red") 
+```
+
+# Temperal window
 
 Sample the cells in a sliding window
-
 
 * we are allowed to sample any cells that have been occupied in the dataset, we know that whales can disperse to those sites. This ignores the inhenerent spatial autocorrelation in movement.
 

@@ -1,0 +1,76 @@
+---
+title: "Reporting"
+author: "Ben Weinstein"
+date: "March 13, 2017"
+output: html_document
+---
+
+```{r,warning=FALSE,message=FALSE,echo=FALSE}
+library(knitr)
+opts_chunk$set(echo=F,warning=F,message=F,fig.width = 11,fig.height = 5,cache=F)
+library(boot)
+library(raster)
+library(tidyr)
+library(ggplot2)
+library(MASS)
+library(ggmap)
+library(dplyr)
+library(chron)
+library(gridExtra)
+library(stringr)
+library(R2jags)
+library(maptools)
+library(reshape2)
+#New model to be run, flag turned off if just updating.
+newModel<-T
+
+##ggplot theme
+mytheme<-theme(axis.text.x=element_blank(),axis.ticks.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.x=element_blank(),axis.title.y=element_blank(),panel.grid=element_blank())
+```
+
+```{r setup, include=FALSE}
+#read data
+mdat<-read.csv("Data/Humpback Whales Megaptera novaeangliae West Antarctic Peninsula-3343066988628153526.csv")
+#standardize column names to match the simulation
+#Create an animal tag.
+mxy <- as(mdat, "data.frame")
+mxy$Animal<-mxy$individual.local.identifier
+mxy$x<-mxy$location.long
+mxy$y<-mxy$location.lat
+
+mxy$argos.lc<-mxy$argos.iq
+mxy$argos.iq<-NULL
+#grab set of animals
+mxy<-mxy[mxy$Animal %in% c("131130","131134","131132","131133","131129","131128","131127"),]
+
+#get rid of z class 
+mxy<-mxy[!mxy$argos.lc %in% c("Z"),]
+
+#crop by extent
+d<-SpatialPointsDataFrame(cbind(mxy$x,mxy$y),data=mxy,proj4string=CRS("+proj=longlat +datum=WGS84"))
+
+#cropoly<-readShapePoly("InputData/CutPolygon.shp",proj4string=CRS("+proj=longlat +datum=WGS84"))
+
+#b<-d[!is.na(d %over% cropoly)[,2],]
+
+#mxy<-b@data
+
+#set datestamp
+mxy$timestamp<-as.POSIXct(mxy$timestamp,format="%Y-%m-%d %H:%M:%S.000")
+
+#month and year columns
+mxy$Month<-months(mxy$timestamp)
+mxy$Year<-years(mxy$timestamp)
+```
+
+```{r}
+
+a="131134"
+pp<-c(mean(mxy[mxy$Animal %in% a,"x"]),mean(mxy[mxy$Animal %in% a,"y"]))
+m <- get_map(location=pp,source="google",zoom=5,scale=2,maptype="satellite",color = "bw")
+
+
+ggmap(m)+geom_path(data=mxy[mxy$Animal %in% a,], aes(x=x, y=y,col=as.factor(Animal)),size=.5)  + facet_wrap(~Animal,nrow=2) + scale_color_discrete(guide="none") + theme(axis.text.x=element_blank(),axis.text.y=element_blank(),axis.ticks.x=element_blank(),axis.ticks.y=element_blank()) + labs(x="",y="")
+
+mxy %>% filter(Animal %in% a) %>% summarize(n(),duration=difftime(min(timestamp),max(timestamp),units="days"),start=max(timestamp),end=min(timestamp))
+```

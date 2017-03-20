@@ -4,19 +4,7 @@ February 21, 2017
 
 
 
-
 #Argos Observations
-
-
-# Dive Data
-
-
-
-# Geographic Data
-![](IceAnalysis_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
-
-## Bind the geographic and dive data
-
 
 
 ## Occupancy and ice concentration.
@@ -29,11 +17,15 @@ Associate each argos location with ice cell.
 
 
 
+![](IceAnalysis_files/figure-html/unnamed-chunk-5-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-5-2.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-5-3.png)<!-- -->
 
+![](IceAnalysis_files/figure-html/unnamed-chunk-6-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-6-2.png)<!-- -->
 
-![](IceAnalysis_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+##Time integration
 
-![](IceAnalysis_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
+Each observation is not independent. In the above analysis a whale popping up 4 times in an hour will recieve the same weight as 4 observations in one day. One approach is to take the average ice concentration among observations and multiply it be the time difference.
+
+![](IceAnalysis_files/figure-html/unnamed-chunk-7-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-7-2.png)<!-- -->
 
 # Null models
 
@@ -45,14 +37,19 @@ For each day, sample randomly in the background points for null values of sea ic
 
 
 
-![](IceAnalysis_files/figure-html/unnamed-chunk-10-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-10-2.png)<!-- -->
+![](IceAnalysis_files/figure-html/unnamed-chunk-9-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-9-2.png)<!-- -->
 
 ## Temperal window
 
 Sample the cells in a sliding window
 
-
 * we are allowed to sample any cells that have been occupied in the dataset, we know that whales can disperse to those sites. This ignores the inhenerent spatial autocorrelation in movement.
+
+#Distance to ice edge
+
+
+
+![](IceAnalysis_files/figure-html/unnamed-chunk-11-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-11-2.png)<!-- -->
 
 
 
