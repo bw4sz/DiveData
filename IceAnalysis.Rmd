@@ -74,7 +74,7 @@ mxy$argos.lc<-mxy$argos.iq
 mxy$argos.iq<-NULL
 
 #grab set of animals
-mxy<-mxy[mxy$Animal %in% c("131143","131142","123232","123236"),]
+#mxy<-mxy[mxy$Animal %in% c("131143","131142","123232","123236"),]
 
 #get rid of z class 
 mxy<-mxy[!mxy$argos.lc %in% c("B","Z"),]
@@ -203,7 +203,6 @@ mxy_time<-mxy %>% group_by(Animal) %>% do(difft(.))
 
 #remove observations more than a two days, too far to travel
 mxy_time<-mxy_time %>% filter(LastTime<48)
-
 
 #weighted kernel
 ggplot(mxy_time,aes(x=MeanIce))  + geom_density(fill="red") + geom_density(aes(weight=LastTime/sum(LastTime)),fill="black",alpha=0.3)
@@ -352,19 +351,61 @@ stopCluster(cl)
 #distance to nearest cell
 distice_frame<-bind_rows(out)
 mxy<-merge(mxy,distice_frame,by=c("stereo.x","stereo.y"))
+
+#If the sea ice conc is > 15%, the ice distance is negative, this isn't true for polynynas need to think about this.
+ggplot(mxy,aes(x=dist_ice,y=ice)) + geom_point() + labs(x="Distance to ice edge",y="Sea Ice Concentration")
+
+mxy[mxy$ice>15 & !is.na(mxy$ice),"dist_ice"] <- -mxy[mxy$ice>15 & !is.na(mxy$ice),"dist_ice"]
 ```
 
 ```{r}
-ggplot(data=mxy,aes(x=dist_ice)) + geom_histogram()
+#plot distance, with cell size labeled
+ggplot(data=mxy,aes(x=dist_ice)) + geom_histogram() + labs(x="Distance to ice edge") + theme_bw() 
 
 ggplot()+geom_point(data=mxy,aes(x=x, y=y,col=dist_ice),size=.5)  + facet_wrap(~Month,nrow = 2)  + borders() + coord_cartesian(ylim = c(-70,-62),xlim=c(-55,-73)) + theme_bw() + mytheme + scale_color_continuous(low="blue",high="red") 
 ```
 
+### Zoom in 
+
+```{r}
+#plot distance, with cell size labeled
+ggplot(data=mxy[mxy$dist_ice<100,],aes(x=dist_ice)) + geom_histogram() + labs(x="Distance to ice edge") + theme_bw() 
+
+#By month
+ggplot(data=mxy[mxy$dist_ice<100,],aes(x=dist_ice,fill=Month)) + geom_density(alpha=0.5) + labs(x="Distance to ice edge") + theme_bw()
+
+ggplot()+geom_point(data=mxy[mxy$dist_ice<100,],aes(x=x, y=y,col=dist_ice),size=.5)  + facet_wrap(~Month,nrow = 2)  + borders() + coord_cartesian(ylim = c(-70,-62),xlim=c(-55,-73)) + theme_bw() + mytheme + scale_color_continuous(low="blue",high="red") 
+```
+
 # Temperal window
 
-Sample the cells in a sliding window
+Sample the cells in a sliding 10 day window
 
-* we are allowed to sample any cells that have been occupied in the dataset, we know that whales can disperse to those sites. This ignores the inhenerent spatial autocorrelation in movement.
+```{r}
+#list all rasters available 
+#for each iceday, get the sea ice concentration
+allgrd<-list.files("C:/Users/Ben/Dropbox/Whales/AMSR2",recursive = T,full.names = T,pattern=".grd")
+
+for (x in 1:length(allgrd)){
+  
+  r<-raster(allgrd[1])
+  
+  #parse date
+  str_match(r@file@name,"s3125-(\\w+)")[,2]
+  
+  #get points within 10 days
+  mxy$
+  upts<-mxy[mxy$iceday %in% udays[x],c("stereo.x","stereo.y")]
+  out[[x]]<-data.frame(upts,ice=raster::extract(x=r,y=SpatialPoints(cbind(upts))))
+  }, error=function(e){
+    #print("No file")
+    return(NA)
+  })
+}
+
+ice_frame<-bind_rows(out)
+mxy<-merge(mxy,ice_frame,by=c("stereo.x","stereo.y"))
+```
 
 ```{r}
 save.image("Data/IceData.RData")
