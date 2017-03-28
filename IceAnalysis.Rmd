@@ -431,11 +431,14 @@ ice_frame$icediff<-ice_frame$obs_ice-ice_frame$ice
 
 #month
 ice_frame$Month<-months(ice_frame$obs_day)
-ice_frame$Month<-factor(ice_frame$Months,levels=month.name)
+ice_frame$Month<-factor(ice_frame$Month,levels=month.name)
 
 ggplot(ice_frame,aes(x=as.numeric(daydiff),y=icediff)) + geom_boxplot(aes(group=daydiff)) + labs(y="Change in ice concentration",x="Days since observation")
 
 ggplot(ice_frame,aes(x=as.numeric(daydiff),y=icediff)) + geom_smooth() + labs(y="Change in ice concentration",x="Days since observation") + facet_wrap(~Month,scales="free")
+
+ggplot(ice_frame,aes(x=as.numeric(daydiff),y=icediff)) + geom_smooth(aes(group=Animal)) + labs(y="Change in ice concentration",x="Days since observation") + facet_wrap(~Month,scales="free") + theme_bw()
+
 ```
 
 ```{r}
