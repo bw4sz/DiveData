@@ -232,8 +232,8 @@ bg<-bg>0
 #for each day
 
 #unique days to pull raster
-udays<-unique(strptime(mxy$timestamp,format="%Y-%m-%d"))
-mxy$iceday<-strptime(mxy$timestamp,format="%Y-%m-%d")
+udays<-unique(strptime(mxy$timestamp,format="%Y-%m-%d",tz="GMT"))
+mxy$iceday<-strptime(mxy$timestamp,format="%Y-%m-%d",tz="GMT")
 
 #for each iceday, get the sea ice concentration
 out<-list()
@@ -432,9 +432,10 @@ ice_frame$icediff<-ice_frame$obs_ice-ice_frame$ice
 #month
 ice_frame$Month<-months(ice_frame$obs_day)
 ice_frame$Month<-factor(ice_frame$Months,levels=month.name)
-ggplot(ice_frame,aes(x=as.numeric(daydiff),y=icediff)) + geom_point() + labs(y="Change in ice concentration",x="Days since observation")
 
-ggplot(ice_frame,aes(x=as.numeric(daydiff),y=icediff)) + geom_smooth() + labs(y="Change in ice concentration",x="Days since observation") + facet_wrap(~Month)
+ggplot(ice_frame,aes(x=as.numeric(daydiff),y=icediff)) + geom_boxplot(aes(group=daydiff)) + labs(y="Change in ice concentration",x="Days since observation")
+
+ggplot(ice_frame,aes(x=as.numeric(daydiff),y=icediff)) + geom_smooth() + labs(y="Change in ice concentration",x="Days since observation") + facet_wrap(~Month,scales="free")
 ```
 
 ```{r}
