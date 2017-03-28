@@ -67,11 +67,15 @@ For each day, sample randomly in the background points for null values of sea ic
 
 ![](IceAnalysis_files/figure-html/unnamed-chunk-11-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-11-2.png)<!-- -->
 
+### Zoom in 
+
+![](IceAnalysis_files/figure-html/unnamed-chunk-12-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-12-2.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-12-3.png)<!-- -->
+
 # Temperal window
 
-Sample the cells in a sliding window
+Sample the cells in a sliding 10 day window
 
-* we are allowed to sample any cells that have been occupied in the dataset, we know that whales can disperse to those sites. This ignores the inhenerent spatial autocorrelation in movement.
+![](IceAnalysis_files/figure-html/unnamed-chunk-13-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-13-2.png)<!-- -->
 
 
 

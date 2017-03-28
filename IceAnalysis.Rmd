@@ -57,7 +57,9 @@ newModel<-T
 ##ggplot theme
 mytheme<-theme(axis.text.x=element_blank(),axis.ticks.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.x=element_blank(),axis.title.y=element_blank(),panel.grid=element_blank())
 
-load("Data/IceData.RData")
+#load("Data/IceData.RData")
+daysec = 60*60*24
+region='AntarcticPeninsula'
 ```
 
 ```{r}
@@ -89,7 +91,7 @@ b<-d[!is.na(d %over% cropoly)[,2],]
 mxy<-b@data
 
 #set datestamp
-mxy$timestamp<-as.POSIXct(mxy$timestamp,format="%Y-%m-%d %H:%M:%S.000")
+mxy$timestamp<-as.POSIXct(mxy$timestamp,format="%Y-%m-%d %H:%M:%S.000",tz="GMT")
 
 #month and year columns
 mxy$Month<-months(mxy$timestamp)
@@ -123,6 +125,10 @@ What is the probability of occupancy of a cell as a function of % ice cover.
 Associate each argos location with ice cell.
 
 ```{r}
+
+#get a sample raster
+r<-raster("C:\\Users\\Ben\\Dropbox\\Whales\\AMSR2\\2016\\may\\AntarcticPeninsula\\asi-AMSR2-s3125-20160531.grd")
+
 #get points in projection
 longlat<-SpatialPoints(cbind(mxy$location.long,mxy$location.lat),proj4string=CRS("+proj=longlat +datum=WGS84"))
 #long lat
@@ -132,8 +138,8 @@ mxy[,c("stereo.x","stereo.y")]<-coordinates(polarstereo)
 
 ```{r}
 #unique days to pull raster
-udays<-unique(strptime(mxy$timestamp,format="%Y-%m-%d"))
-mxy$iceday<-strptime(mxy$timestamp,format="%Y-%m-%d")
+udays<-unique(strptime(mxy$timestamp,format="%Y-%m-%d",tz="GMT"))
+mxy$iceday<-strptime(mxy$timestamp,format="%Y-%m-%d",tz="GMT")
 
 #for each iceday, get the sea ice concentration
 out<-list()
@@ -386,25 +392,49 @@ Sample the cells in a sliding 10 day window
 #for each iceday, get the sea ice concentration
 allgrd<-list.files("C:/Users/Ben/Dropbox/Whales/AMSR2",recursive = T,full.names = T,pattern=".grd")
 
+out<-list()
 for (x in 1:length(allgrd)){
   
-  r<-raster(allgrd[1])
+  r<-raster(allgrd[x])
   
   #parse date
-  str_match(r@file@name,"s3125-(\\w+)")[,2]
+  dater<-str_match(r@file@name,"s3125-(\\w+)")[,2]
   
-  #get points within 10 days
-  mxy$
-  upts<-mxy[mxy$iceday %in% udays[x],c("stereo.x","stereo.y")]
-  out[[x]]<-data.frame(upts,ice=raster::extract(x=r,y=SpatialPoints(cbind(upts))))
-  }, error=function(e){
-    #print("No file")
-    return(NA)
-  })
-}
+  yr<-substring(dater,1,4)
+  mn<-substring(dater,5,6)
+  dy<-substring(dater,7,8)
+  
+  #construct date
+  set_date<-as.POSIXct(paste(yr,mn,dy,sep="-"),format="%Y-%m-%d",tz="GMT")
+  
+  gpts<-mxy$iceday[mxy$iceday >= set_date - (10*daysec) & mxy$iceday <= set_date + (10*daysec)]
+  
+  if(length(gpts)==0){
+    next
+  }
+  #animal location and dates
+  upts<-mxy[mxy$iceday %in% gpts,c("stereo.x","stereo.y")]
+  upts_date<-mxy[mxy$iceday %in% gpts,c("iceday")]
+  upts_ice<-mxy[mxy$iceday %in% gpts,c("ice")]
+  upts_animal<-mxy[mxy$iceday %in% gpts,c("Animal")]
+
+  out[[x]]<-data.frame(Animal=upts_animal,upts,obs_day=upts_date,raster_day=set_date,obs_ice=upts_ice,ice=raster::extract(x=r,y=SpatialPoints(cbind(upts))))
+  }
 
 ice_frame<-bind_rows(out)
-mxy<-merge(mxy,ice_frame,by=c("stereo.x","stereo.y"))
+
+#difference in the days
+ice_frame$daydiff<-difftime(ice_frame$obs_day,ice_frame$raster_day,units="days")
+
+#differnce in ice
+ice_frame$icediff<-ice_frame$obs_ice-ice_frame$ice
+
+#month
+ice_frame$Month<-months(ice_frame$obs_day)
+ice_frame$Month<-factor(ice_frame$Months,levels=month.name)
+ggplot(ice_frame,aes(x=as.numeric(daydiff),y=icediff)) + geom_point() + labs(y="Change in ice concentration",x="Days since observation")
+
+ggplot(ice_frame,aes(x=as.numeric(daydiff),y=icediff)) + geom_smooth() + labs(y="Change in ice concentration",x="Days since observation") + facet_wrap(~Month)
 ```
 
 ```{r}
