@@ -1,0 +1,109 @@
+---
+title: "Hidden Markov Model for Fine Scale Whale Movement"
+author: "Ben Weinstein"
+date: "April 2, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(moveHMM)
+library(reshape2)
+library(dplyr)
+library(ggplot2)
+library(ggmap)
+library(chron)
+library(stringr)
+library(raster)
+library(maptools)
+library(adehabitatLT)
+
+#read data
+mdat<-read.csv("C:/Users/Ben/Documents/DiveData/Data/Humpback Whales Megaptera novaeangliae West Antarctic Peninsula-3343066988628153526.csv")
+
+#standardize column names to match the simulation
+#Create an animal tag.
+mxy <- as(mdat, "data.frame")
+mxy$Animal<-mxy$individual.local.identifier
+mxy$x<-mxy$location.long
+mxy$y<-mxy$location.lat
+
+mxy$argos.lc<-mxy$argos.iq
+mxy$argos.iq<-NULL
+#grab set of animals
+#mxy<-mxy[mxy$Animal %in% c("131143","131142","123232","123236"),]
+
+#get rid of z class 
+mxy<-mxy[!mxy$argos.lc %in% c("Z","A","B"),]
+
+#crop by extent
+d<-SpatialPointsDataFrame(cbind(mxy$x,mxy$y),data=mxy,proj4string=CRS("+proj=longlat +datum=WGS84"))
+
+#set datestamp
+mxy$timestamp<-as.POSIXct(mxy$timestamp,format="%Y-%m-%d %H:%M:%S.000")
+
+#month and year columns
+mxy$Month<-months(mxy$timestamp)
+mxy$Year<-years(mxy$timestamp)
+
+#overlay data
+mxy<-mxy %>% filter(Year==2015,Month %in% c("January","February","March","April","May","June"),location.long> -64.5,location.long < -64,location.lat < -64.7,location.lat > -65.5 ) %>% arrange(Animal,timestamp) %>% dplyr::select(Animal,x,y,timestamp)
+mxy$ID<-as.factor(mxy$Animal)
+mxy$Animal<-NULL
+```
+
+```{r}
+md<-prepData(mxy,type="LL",coordNames=c("x","y"))
+plot(md,compact=T,ask=F)
+```
+
+## initial parameters for gamma and von Mises distributions
+```{r}
+mu0 <- c(1,1) # step mean (two parameters: one for each state)
+sigma0 <- c(1,1) # step SD
+zeromass0 <- c(0.1,0.05) # step zero-mass
+stepPar0 <- c(mu0,sigma0)
+angleMean0 <- c(pi,0) # angle mean
+kappa0 <- c(1,1) # angle concentration
+anglePar0 <- c(angleMean0,kappa0)
+
+## call to fitting function
+m <- fitHMM(data=md,nbStates=2,stepPar0=stepPar0,
+            anglePar0=anglePar0,formula=~1)
+```
+
+```{r}
+m
+```
+
+```{r}
+plot(m)
+```
+
+```{r}
+states <- viterbi(m)
+mxy$states<-states
+mxy$Behavior<-as.factor(mxy$states)
+levels(mxy$Behavior)<-c("Traveling","Area-restricted Search")
+```
+
+```{r}
+mytheme<-theme(axis.text.x=element_blank(),axis.ticks.x=element_blank(),axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.title.x=element_blank(),axis.title.y=element_blank(),panel.grid=element_blank())
+
+ggplot(mxy,aes(x=x,y=y,col=Behavior)) + geom_point() + geom_path(aes(group=ID)) + theme_bw() + facet_wrap(~ID) + mytheme
+```
+
+```{r}
+pp<-c(mean(mxy$x),mean(mxy$y))
+m <- get_map(location=pp,source="google",zoom=10,scale=2,maptype="satellite",color = "bw")
+ggmap(m)+geom_path(data=mxy, aes(x=x, y=y,col=as.factor(ID)),size=.5) + scale_color_discrete(guide="none") + theme_inset()
+```
+
+```{r}
+pp<-c(mean(mxy$x),mean(mxy$y))
+m <- get_map(location=pp,source="google",zoom=10,scale=2,maptype="satellite",color = "bw")
+ggmap(m)+geom_path(data=mxy, aes(x=x, y=y,col=Behavior,group=ID),size=.5) + theme_inset()
+
+ggmap(m)+geom_path(data=mxy, aes(x=x, y=y,col=Behavior,group=ID),size=.5) + theme_inset() + facet_wrap(~ID)
+
+write.csv(mxy,"forjosh.csv")
+```

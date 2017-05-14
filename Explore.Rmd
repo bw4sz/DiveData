@@ -1,7 +1,7 @@
 ---
-title: "Exploration"
+title: "Dive Exploration"
 author: "Ben Weinstein"
-date: "January 20, 2017"
+date: "May 14, 2017"
 output: html_document
 ---
 
@@ -10,20 +10,23 @@ library(ggplot2)
 library(chron)
 library(dplyr)
 library(data.table)
+library(knitr)
+
+opts_chunk$set(echo=F,warnings=F,messages=F,fig.height=8,fig.width=11)
 
 #get files
 f<-list.files("Data/Whales/",pattern="Behavior",full.names=T,recursive = T)
 dat<-bind_rows(lapply(f,read.csv))
-dat$timestamp<-as.POSIXct(dat$End,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
+dat$GMTtime<-as.POSIXct(dat$End,format="%H:%M:%S %d-%b-%Y",tz="GMT")
+
+#local time
+dat$timestamp<-as.POSIXct(format(dat$GMTtime,tz="Etc/GMT+3"))
 
 dat$Month<-months(dat$timestamp)
 dat$Month<-factor(dat$Month,levels=month.name)
 dat$Hour<-strftime(dat$timestamp,format="%H")
 dat$Year<-years(dat$timestamp)
 
-#remove minkes
-minke<-c("131117","131118","131120","154184")
-dat<-dat[!dat$Ptt %in% minke,]
 
 #create unique messages
 indices<-which(dat$What=="Message")
@@ -36,11 +39,13 @@ for (x in 1:(length(indices)-1)){
 
 dive<-dat %>% filter(What=="Dive") %>% select(Animal=Ptt,timestamp,Hour,Month,Year, ID,Start,DepthMax,DepthMin,DurationMax)
 dive<-dive[!is.na(dive$Month),]
+
+
 ```
 
 # Geographic Data
+
 ```{r}
-ggplot(mdat)
 #get files
 f<-list.files("Data/Whales/",pattern="Locations",full.names=T,recursive = T)
 gdat<-lapply(f,function(x) read.csv(x,stringsAsFactors=F))
@@ -50,12 +55,12 @@ gdat<-lapply(gdat,function(x){
 }) 
 gdat<-bind_rows(gdat)
 #timestamp
-gdat$Date<-as.POSIXct(gdat$Date,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
+gdat$Date<-as.POSIXct(gdat$Date,format="%H:%M:%S %d-%b-%Y",tz="GMT")
 ```
 
 ```{r}
 messages<-dat %>% filter(dat$What=="Message")
-messages$timestamp<-as.POSIXct(messages$End,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT-3")
+messages$timestamp<-as.POSIXct(messages$End,format="%H:%M:%S %d-%b-%Y",tz="GMT")
 
 #look up the time interval that best fits
 setDT(gdat)            ## convert to data.table by reference
@@ -141,6 +146,9 @@ mdat %>% group_by(Month) %>% summarize(mean(DepthMax))
 
 #Daily patterns of mdat depth 
 ```{r}
+
+ggplot(data=mdat,aes(x=as.numeric(Hour),y=DepthMax)) + geom_boxplot(aes(group=Hour)) + geom_smooth() + scale_y_reverse() + facet_wrap(~Month) + scale_x_continuous(breaks=seq(0,24,4)) + labs(x="Hour",y="Max Depth")
+
 #timestamp
 ggplot(data=mdat,aes(x=as.numeric(Hour),y=DepthMax,col=as.factor(Animal))) + geom_point() + geom_smooth() + scale_y_reverse() + facet_wrap(~Month) + scale_x_continuous(breaks=seq(0,24,4))
 ```
@@ -159,8 +167,7 @@ amat<-maxD %>% arrange(Animal,Date)
 ggplot(amat,aes(x=Longitude,y=Latitude)) + geom_point(aes(col=m,size=m)) + borders(fill="black") + coord_cartesian(ylim = c(-65,-61),xlim=c(-55,-67)) + theme_bw() + scale_color_continuous(low="blue",high="red") + facet_wrap(~Animal) + geom_path(aes(group=1))
 ```
 
-# Ice Data
 ```{r}
-ice<-read.csv("InputData/SeaIce_AllYears_polygons.csv")
+save.image("Data/DiveExploration.Rdata")
 ```
 

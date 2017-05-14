@@ -47,7 +47,7 @@ Associate each argos location with ice cell.
 
 Each observation is not independent. In the above analysis a whale popping up 4 times in an hour will recieve the same weight as 4 observations in one day. One approach is to take the average ice concentration among observations and multiply it be the time difference.
 
-![](IceAnalysis_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+![](IceAnalysis_files/figure-html/unnamed-chunk-7-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-7-2.png)<!-- -->
 
 # Null models
 
@@ -75,7 +75,7 @@ For each day, sample randomly in the background points for null values of sea ic
 
 Sample the cells in a sliding 10 day window
 
-![](IceAnalysis_files/figure-html/unnamed-chunk-13-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-13-2.png)<!-- -->
+![](IceAnalysis_files/figure-html/unnamed-chunk-13-1.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-13-2.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-13-3.png)<!-- -->![](IceAnalysis_files/figure-html/unnamed-chunk-13-4.png)<!-- -->
 
 
 

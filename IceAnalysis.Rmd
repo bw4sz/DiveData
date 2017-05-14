@@ -76,7 +76,7 @@ mxy$argos.lc<-mxy$argos.iq
 mxy$argos.iq<-NULL
 
 #grab set of animals
-#mxy<-mxy[mxy$Animal %in% c("131143","131142","123232","123236"),]
+mxy<-mxy[mxy$Animal %in% c("131143","131142","123232","123236"),]
 
 #get rid of z class 
 mxy<-mxy[!mxy$argos.lc %in% c("B","Z"),]
@@ -210,8 +210,11 @@ mxy_time<-mxy %>% group_by(Animal) %>% do(difft(.))
 #remove observations more than a two days, too far to travel
 mxy_time<-mxy_time %>% filter(LastTime<48)
 
+
+ggplot(mxy_time,aes(x=MeanIce))  + geom_density(fill="red") + labs(x="Sea Ice Concentration(%)") + theme_bw()
+
 #weighted kernel
-ggplot(mxy_time,aes(x=MeanIce))  + geom_density(fill="red") + geom_density(aes(weight=LastTime/sum(LastTime)),fill="black",alpha=0.3)
+ggplot(mxy_time,aes(x=MeanIce))  + geom_density(fill="red") + geom_density(aes(weight=LastTime/sum(LastTime)),fill="black",alpha=0.3) + labs(x="Sea Ice Concentration(%)")
 ```
 
 # Null models
@@ -366,7 +369,7 @@ mxy[mxy$ice>15 & !is.na(mxy$ice),"dist_ice"] <- -mxy[mxy$ice>15 & !is.na(mxy$ice
 
 ```{r}
 #plot distance, with cell size labeled
-ggplot(data=mxy,aes(x=dist_ice)) + geom_histogram() + labs(x="Distance to ice edge") + theme_bw() 
+ggplot(data=mxy,aes(x=dist_ice)) + geom_histogram() + labs(x="Distance to 15% ice edge (km)") + theme_bw() 
 
 ggplot()+geom_point(data=mxy,aes(x=x, y=y,col=dist_ice),size=.5)  + facet_wrap(~Month,nrow = 2)  + borders() + coord_cartesian(ylim = c(-70,-62),xlim=c(-55,-73)) + theme_bw() + mytheme + scale_color_continuous(low="blue",high="red") 
 ```
@@ -434,7 +437,7 @@ ice_frame$Month<-months(ice_frame$obs_day)
 ice_frame$Month<-factor(ice_frame$Month,levels=month.name)
 
 
-ggplot(ice_frame,aes(x=as.numeric(daydiff),y=icediff)) + geom_smooth() + labs(y="Ice concentration",x="Days since observation") + facet_wrap(~Month,scales="free")
+ggplot(ice_frame,aes(x=as.numeric(daydiff),y=ice)) + geom_smooth() + labs(y="Ice concentration",x="Days since observation") + facet_wrap(~Month,scales="free")
 
 ggplot(ice_frame,aes(x=as.numeric(daydiff),y=icediff)) + geom_boxplot(aes(group=daydiff)) + labs(y="Change in ice concentration",x="Days since observation")
 
