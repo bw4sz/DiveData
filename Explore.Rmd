@@ -1,8 +1,10 @@
 ---
-title: "Dive Exploration"
+title: "Dive Data Exploration"
 author: "Ben Weinstein"
 date: "May 14, 2017"
-output: html_document
+output: 
+  html_document:
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
@@ -11,13 +13,13 @@ library(chron)
 library(dplyr)
 library(data.table)
 library(knitr)
-
+library(maptools)
 opts_chunk$set(echo=F,warnings=F,messages=F,fig.height=8,fig.width=11)
 
 #get files
-f<-list.files("Data/Whales/",pattern="Behavior",full.names=T,recursive = T)
+f<-list.files("C:/Users/Ben/Dropbox/Whales/Data/Humpback/",pattern="Behavior",full.names=T,recursive = T)
 dat<-bind_rows(lapply(f,read.csv))
-dat$GMTtime<-as.POSIXct(dat$End,format="%H:%M:%S %d-%b-%Y",tz="GMT")
+dat$GMTtime<-as.POSIXct(dat$End,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT+3")
 
 #local time
 dat$timestamp<-as.POSIXct(format(dat$GMTtime,tz="Etc/GMT+3"))
@@ -37,17 +39,18 @@ for (x in 1:(length(indices)-1)){
   counter=counter+1
 }
 
-dive<-dat %>% filter(What=="Dive") %>% select(Animal=Ptt,timestamp,Hour,Month,Year, ID,Start,DepthMax,DepthMin,DurationMax)
+dive<-dat %>% filter(What=="Dive")%>% dplyr::select(Animal=Ptt,timestamp,Hour,Month,Year, ID,Start,DepthMax,DepthMin,DurationMax)
 dive<-dive[!is.na(dive$Month),]
 
-
+#remove duplicate data
+dive<-dive %>% arrange(Animal,timestamp) 
+dive<-dive[!duplicated(dive),]
 ```
 
-# Geographic Data
-
 ```{r}
+#Merge geographic data
 #get files
-f<-list.files("Data/Whales/",pattern="Locations",full.names=T,recursive = T)
+f<-list.files("C:/Users/Ben/Dropbox/Whales/Data/Humpback",pattern="Locations",full.names=T,recursive = T)
 gdat<-lapply(f,function(x) read.csv(x,stringsAsFactors=F))
 gdat<-lapply(gdat,function(x){
   x$Quality<-as.character(x$Quality)
@@ -55,12 +58,12 @@ gdat<-lapply(gdat,function(x){
 }) 
 gdat<-bind_rows(gdat)
 #timestamp
-gdat$Date<-as.POSIXct(gdat$Date,format="%H:%M:%S %d-%b-%Y",tz="GMT")
+gdat$Date<-as.POSIXct(gdat$Date,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT+3")
 ```
 
 ```{r}
 messages<-dat %>% filter(dat$What=="Message")
-messages$timestamp<-as.POSIXct(messages$End,format="%H:%M:%S %d-%b-%Y",tz="GMT")
+messages$timestamp<-as.POSIXct(messages$End,format="%H:%M:%S %d-%b-%Y",tz="Etc/GMT+3")
 
 #look up the time interval that best fits
 setDT(gdat)            ## convert to data.table by reference
@@ -79,16 +82,33 @@ mdat<-merge(dat,message_join,by="ID")
 mdat<-mdat %>% filter(What=="Dive")
 
 mdat<-mdat %>% select(ID,Animal,Latitude,Longitude,timestamp,Start,End,Date,Month,Hour,Year,DepthMax,DepthMin,Quality,DurationMax,DurationMin)
+
+#only focus on Antarctic Peninsula
+
+#crop by extent
+d<-SpatialPointsDataFrame(cbind(mdat$Longitude,mdat$Latitude),data=data.frame(mdat),proj4string=CRS("+proj=longlat +datum=WGS84"))
+
+cropoly<-readShapePoly("Data/CutPolygon.shp",proj4string=CRS("+proj=longlat +datum=WGS84"))
+
+b<-d[!is.na(d %over% cropoly)[,2],]
+
+mdat<-b@data
+
 ```
 
-#Seasonal patterns of mdat depth
+
+## What is the temporal coverage of the dataset? 
+
+Are there broad scale patterns of maximum dive depth over time.
+
 ```{r}
 #mdat depth and time
 ggplot(mdat,aes(x=timestamp,y=DepthMax)) + geom_point()  + scale_x_datetime(date_breaks = "2 week",date_labels = "%m/%d/%y") + scale_y_reverse() + theme_bw() + labs(x="Date")
 ggsave("Figures/Depth_Time.jpg",height=5,width=5)
 ```
 
-## mdat Bin Depth
+## The proportion of dives at each depth.
+
 ```{r}
 mdat20<-mdat %>% filter(DepthMax>20)
 
@@ -106,6 +126,7 @@ ggplot(month_inter) + geom_tile(aes(x=Var1,y=Var2,fill=prop*100)) + labs(x="Mont
 ```
 
 ### By Individual
+
 ```{r}
 mdat20<-mdat %>% filter(DepthMax>20,!Animal %in% c(131111,131128,131115,131116))
 
@@ -134,17 +155,14 @@ ggsave("Figures/Depth_Time.jpg",height=5,width=5)
 ## By Month
 ```{r}
 ggplot(mdat,aes(x=timestamp,y=DepthMax,col=Month)) + geom_point()  + scale_y_reverse() + facet_wrap(~Animal,scales="free_x") + labs(col="Animal",x="Time") + scale_x_datetime(date_breaks = "2 week",date_labels = "%m/%d/%y")
-
-#mdat data and dutation, colored by month
-ggplot(data=mdat,aes(x=DurationMax, y=DepthMax,col=Month)) + geom_point() + theme_bw()
 ```
 
-#average depth over month
 ```{r}
-mdat %>% group_by(Month) %>% summarize(mean(DepthMax))
+mdat %>% group_by(Month) %>% summarize(Average_Depth=mean(DepthMax))
 ```
 
-#Daily patterns of mdat depth 
+##Daily patterns of maximum dive depth 
+
 ```{r}
 
 ggplot(data=mdat,aes(x=as.numeric(Hour),y=DepthMax)) + geom_boxplot(aes(group=Hour)) + geom_smooth() + scale_y_reverse() + facet_wrap(~Month) + scale_x_continuous(breaks=seq(0,24,4)) + labs(x="Hour",y="Max Depth")
@@ -153,18 +171,26 @@ ggplot(data=mdat,aes(x=as.numeric(Hour),y=DepthMax)) + geom_boxplot(aes(group=Ho
 ggplot(data=mdat,aes(x=as.numeric(Hour),y=DepthMax,col=as.factor(Animal))) + geom_point() + geom_smooth() + scale_y_reverse() + facet_wrap(~Month) + scale_x_continuous(breaks=seq(0,24,4))
 ```
 
-## per individual
-```{r}
-ggplot(data=mdat,aes(x=as.numeric(Hour),y=DepthMax)) + geom_point() + geom_smooth() + scale_y_reverse() + facet_wrap(Animal~Month) + scale_x_continuous(breaks=seq(0,24,4))
-```
+## Where are the deep dives?
 
-Bind geographic data to mdat data.
+### By individual
 
 ```{r}
+#Bind geographic data to mdat data.
 maxD<-mdat %>% group_by(Animal,Latitude,Longitude,ID,Date) %>% summarize(m=max(DepthMax))
 
 amat<-maxD %>% arrange(Animal,Date)
-ggplot(amat,aes(x=Longitude,y=Latitude)) + geom_point(aes(col=m,size=m)) + borders(fill="black") + coord_cartesian(ylim = c(-65,-61),xlim=c(-55,-67)) + theme_bw() + scale_color_continuous(low="blue",high="red") + facet_wrap(~Animal) + geom_path(aes(group=1))
+ggplot(amat,aes(x=Longitude,y=Latitude)) + geom_point(aes(col=m,size=m)) + borders(fill="black") + coord_cartesian(ylim = c(-65,-61),xlim=c(-55,-67)) + theme_bw() + scale_color_continuous(low="blue",high="red") + facet_wrap(~Animal) + geom_path(aes(group=1)) + labs(col="Max Depth")
+```
+
+### Summary rasters
+```{r}
+#as a raster
+spmat<-SpatialPointsDataFrame(SpatialPoints(cbind(amat$Longitude,amat$Latitude)),data=data.frame(amat))
+
+sumrast<-raster::rasterize(y=raster::raster(spmat,resolution=0.25),x=spmat,field="m",fun=mean)
+ggplot(amat,aes(x=Longitude,y=Latitude)) + geom_point() + borders(fill="black") + coord_cartesian(ylim = c(-65,-61),xlim=c(-55,-67)) + theme_bw() + geom_tile(data=data.frame(raster::rasterToPoints(sumrast)),aes(x=x,y=y,fill=layer),alpha=0.6) + scale_fill_continuous(low="blue",high="red") + labs(fill="Mean Depth")
+
 ```
 
 ```{r}
